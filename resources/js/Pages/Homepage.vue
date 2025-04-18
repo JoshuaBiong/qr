@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue';
+import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue';
 import { QrcodeStream } from 'vue-qrcode-reader';
-import { router } from '@inertiajs/vue3';
+// import { router } from '@inertiajs/vue3';
 
 // Add props for Inertia data
 const props = defineProps({
@@ -28,6 +28,8 @@ const isScannerReady = ref(false);
 const showVerificationModal = ref(false);
 const paused = ref(false);
 const showScanConfirmation = ref(false);
+const canScanAgain = ref(true);
+const cooldownInterval = ref(null);
 
 // Watch for verification prop changes
 watch(() => props.verification, (newVerification) => {
@@ -91,7 +93,7 @@ const timeout = (ms) => {
 };
 
 const onDetect = async (detectedCodes) => {
-    if (isVerifying.value || verificationStatus.value === 'success') return;
+    if (isVerifying.value || verificationStatus.value === 'success' || !canScanAgain.value) return;
 
     const uuid = detectedCodes[0]?.rawValue;
     if (!uuid) return;
@@ -103,7 +105,7 @@ const onDetect = async (detectedCodes) => {
     try {
         await verifyUUID(uuid);
     } finally {
-        await timeout(500);
+        await timeout(200); // Reduced from 500ms to 200ms
         paused.value = false;
         isVerifying.value = false;
     }
@@ -150,6 +152,14 @@ const verifyUUID = async (uuid) => {
 
 const closeModal = () => {
     showVerificationModal.value = false;
+    canScanAgain.value = false;
+    
+    // Start cooldown timer with shorter duration
+    cooldownInterval.value = setInterval(() => {
+        canScanAgain.value = true;
+        clearInterval(cooldownInterval.value);
+    }, 1000); // Reduced from 3000ms to 1000ms
+    
     startScanning();
 };
 
@@ -186,6 +196,13 @@ onMounted(async () => {
         cameraError.value = 'Failed to initialize scanner. Please refresh the page.';
     }
 });
+
+// Cleanup interval on component unmount
+onUnmounted(() => {
+    if (cooldownInterval.value) {
+        clearInterval(cooldownInterval.value);
+    }
+});
 </script>
 
 <template>
@@ -198,7 +215,7 @@ onMounted(async () => {
         <div v-if="!scanning" class="text-center">
             <button 
                 @click="startScanning" 
-                class="bg-yellow-400 px-10 py-3 font-bold rounded-lg hover:bg-yellow-500 transition disabled:opacity-50"
+                class="bg-yellow-400 px-10 py-3 font-bold rounded-lg hover:bg-yellow-500 hover:px-14 duration-200 transition-all  disabled:opacity-50"
                 :disabled="!hasCamera || !isComponentMounted"
             >
                 Start Scanning

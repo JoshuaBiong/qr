@@ -15,6 +15,13 @@ class VotersModel extends Model
         'last_name',
         'middle_name',
         'prec_no',
-        'uuid'
+        'uuid',
+        'category_id'
     ];
+    
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+    
 }

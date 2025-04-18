@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Category;
 use App\Models\VotersModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Str;
 
 
 class VotersController extends Controller
@@ -16,7 +19,7 @@ class VotersController extends Controller
      */
     public function index()
     {
-        $voters = VotersModel::all();
+        $voters = VotersModel::paginate(10);
         
         return Inertia::render('Admin/Voters/VotersList', [
             'voters' => $voters
@@ -27,7 +30,10 @@ class VotersController extends Controller
      * Show the form for creating a new resource.
      */
     public function create(){
-    return Inertia::render('Admin/Voters/VotersCreate');
+        $categories = Category::all();
+        return Inertia::render('Admin/Voters/VotersCreate', [
+            'categories' => $categories
+        ]);
     }
 
     /**
@@ -83,6 +89,74 @@ class VotersController extends Controller
     {
         //
     }
+
+
+
+
+
+    
+    public function import(Request $request)
+    {
+        Log::info('📥 Voter import started');
+    
+        $request->validate([
+            'category_id' => 'required|exists:categories,id',
+            'file' => 'required|file|mimes:csv,xlsx',
+        ]);
+    
+        try {
+            $file = $request->file('file');
+            $sheets = Excel::toArray([], $file);
+            $data = $sheets[0];
+    
+            // 1. Filter out blank rows
+            $data = array_filter($data, function ($row) {
+                return array_filter($row); // skip empty rows
+            });
+    
+            $data = array_values($data); // reindex
+    
+            if (count($data) < 2) {
+                Log::warning('⚠️ Not enough data rows after cleaning');
+                return back()->withErrors(['file' => 'Not enough data rows']);
+            }
+    
+            // 2. Normalize headers (assumes first non-empty row is the header)
+            $headers = array_map(function ($header) {
+                return strtolower(trim(str_replace(['.', ' '], '_', $header)));
+            }, $data[0]);
+    
+            Log::info('📝 Headers found:', $headers);
+    
+            // 3. Loop through rows
+            foreach (array_slice($data, 1) as $index => $row) {
+                if (count($headers) !== count($row)) {
+                    Log::warning("⚠️ Row $index skipped due to column mismatch", $row);
+                    continue;
+                }
+    
+                $mapped = array_combine($headers, $row);
+                Log::info("✅ Processing row $index", $mapped);
+    
+                VotersModel::create([
+                    'first_name' => trim($mapped['first_name'] ?? ''),
+                    'last_name' => trim($mapped['last_name'] ?? ''),
+                    'middle_name' => trim($mapped['middle_name'] ?? ''),
+                    'prec_no' => trim($mapped['PREC. NO'] ?? $mapped['prec_no'] ?? 0),
+                    'uuid' => (string) Str::uuid(),
+                    'category_id' => $request->category_id,
+                ]);
+            }
+    
+            Log::info("✅ Voter import completed successfully");
+            return back()->with('success', 'Voters imported successfully!');
+        } catch (\Exception $e) {
+            Log::error("❌ Import failed: " . $e->getMessage());
+            return back()->withErrors(['file' => 'An error occurred during import. Check logs.']);
+        }
+    }
+    
+    
 
    
 }

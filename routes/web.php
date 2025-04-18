@@ -14,6 +14,7 @@ Route::get('/', function () {
 });
 
 Route::get('/verify/{uuid}', [PageController::class, 'verify'])->name('voters.verify');
+Route::get('/cards', [PageController::class, 'viewcards'])->name('cards');
 
 
 
@@ -29,6 +30,13 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::resource('voters', VotersController::class)->names('voters');
+    Route::post('/voters/import', [VotersController::class, 'import'])->name('voters.import');
+
+
+
+
+
+
 });
 
 require __DIR__.'/auth.php';

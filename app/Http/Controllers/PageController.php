@@ -39,4 +39,12 @@ class PageController extends Controller
         }
     }
    
+
+    public function viewcards() {
+
+        $voters = VotersModel::all();
+        return Inertia::render("CardsQr", [
+            "voters"=> $voters
+        ]);
+    }
 }
