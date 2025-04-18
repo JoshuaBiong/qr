@@ -14,6 +14,7 @@ class VotersModel extends Model
         'first_name',
         'last_name',
         'middle_name',
+        'prec_no',
         'uuid'
     ];
 }

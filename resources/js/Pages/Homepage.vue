@@ -64,22 +64,23 @@ const checkCamera = async () => {
     } catch (err) {
         hasCamera.value = false;
         cameraError.value = 'Failed to access camera. Please check permissions.';
-        console.error('Camera error:', err);
+        // console.error('Camera error:', err);
     }
 };
 
 const onCameraOn = () => {
     showScanConfirmation.value = false;
-    console.log('Camera turned on');
+    // console.log('Camera turned on');
 };
 
 const onCameraOff = () => {
     showScanConfirmation.value = true;
-    console.log('Camera turned off');
+    // console.log('Camera turned off');
 };
 
 const onError = (err) => {
-    console.error('QR Code Error:', err);
+    // console.error('QR Code Error:', err);
+
     error.value = err.message;
 };
 
@@ -109,7 +110,7 @@ const onDetect = async (detectedCodes) => {
 };
 
 const verifyUUID = async (uuid) => {
-    console.log('Starting verification for UUID:', uuid);
+    // console.log('Starting verification for UUID:', uuid);
     loading.value = true;
     verificationStatus.value = null;
     error.value = '';
@@ -117,23 +118,32 @@ const verifyUUID = async (uuid) => {
     isInDatabase.value = false;
 
     try {
-        console.log('Sending verification request...');
-        await router.get(route('voters.verify', { uuid }), {}, {
-            preserveState: true,
-            preserveScroll: true
-        });
+        // console.log('Sending verification request...');
+        const response = await fetch(route('voters.verify', { uuid }));
+        const data = await response.json();
+        // console.log('Server response:', data);
+
+        if (data.success) {
+            // console.log('✅ Verification successful - Voter found in database');
+            verificationStatus.value = 'success';
+            voterData.value = data.data;
+            isInDatabase.value = true;
+            showVerificationModal.value = true;
+            stopScanning();
+        } else {
+            // console.log('❌ Verification failed');
+            verificationStatus.value = 'error';
+            error.value = data.message || 'Verification failed';
+            isInDatabase.value = false;
+            showVerificationModal.value = true;
+        }
     } catch (err) {
         console.error('❌ Verification error:', err);
-        console.log('Error details:', {
-            message: err.message,
-            stack: err.stack
-        });
-        
         verificationStatus.value = 'error';
-        error.value = err.message || 'Verification failed.';
+        error.value = 'Failed to verify voter. Please try again.';
         showVerificationModal.value = true;
     } finally {
-        console.log('Verification process completed');
+        // console.log('Verification process completed');
         loading.value = false;
     }
 };
@@ -206,16 +216,7 @@ onMounted(async () => {
                         @error="onError"
                         class="w-full"
                     >
-                        <div
-                            v-show="showScanConfirmation"
-                            class="scan-confirmation"
-                        >
-                            <div class="text-center">
-                                <svg class="w-32 h-32 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                            </div>
-                        </div>
+                        
                     </QrcodeStream>
                 </div>
 
@@ -275,15 +276,4 @@ onMounted(async () => {
     </div>
 </template>
 
-<style scoped>
-.scan-confirmation {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 255, 255, 0.8);
-    display: flex;
-    flex-flow: row nowrap;
-    justify-content: center;
-    align-items: center;
-}
-</style>
+
