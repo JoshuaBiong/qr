@@ -15,6 +15,7 @@ class VotersModel extends Model
         'last_name',
         'middle_name',
         'prec_no',
+        'status',
         'uuid',
         'category_id'
     ];

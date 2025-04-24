@@ -76,7 +76,7 @@ const onCameraOn = () => {
 };
 
 const onCameraOff = () => {
-    showScanConfirmation.value = true;
+    showScanConfirmation.value = false;
     // console.log('Camera turned off');
 };
 
@@ -105,7 +105,7 @@ const onDetect = async (detectedCodes) => {
     try {
         await verifyUUID(uuid);
     } finally {
-        await timeout(200); // Reduced from 500ms to 200ms
+        await timeout(100); // Reduced from 500ms to 200ms
         paused.value = false;
         isVerifying.value = false;
     }
@@ -124,14 +124,13 @@ const verifyUUID = async (uuid) => {
         const response = await fetch(route('voters.verify', { uuid }));
         const data = await response.json();
         // console.log('Server response:', data);
-
         if (data.success) {
             // console.log('✅ Verification successful - Voter found in database');
             verificationStatus.value = 'success';
             voterData.value = data.data;
             isInDatabase.value = true;
             showVerificationModal.value = true;
-            stopScanning();
+            // stopScanning();
         } else {
             // console.log('❌ Verification failed');
             verificationStatus.value = 'error';
@@ -162,7 +161,6 @@ const closeModal = () => {
     
     startScanning();
 };
-
 const startScanning = () => {
     if (!hasCamera.value) {
         error.value = cameraError.value;
@@ -175,28 +173,23 @@ const startScanning = () => {
     verificationStatus.value = null;
     voterData.value = null;
 };
-
 const stopScanning = () => {
     scanning.value = false;
 };
-
 onMounted(async () => {
     try {
         await nextTick();
         isComponentMounted.value = true;
-
         if (!navigator.mediaDevices) {
             cameraError.value = 'Your browser does not support camera access.';
             return;
         }
-
         await checkCamera();
     } catch (err) {
         console.error('Component mounting error:', err);
         cameraError.value = 'Failed to initialize scanner. Please refresh the page.';
     }
 });
-
 // Cleanup interval on component unmount
 onUnmounted(() => {
     if (cooldownInterval.value) {
@@ -215,7 +208,7 @@ onUnmounted(() => {
         <div v-if="!scanning" class="text-center">
             <button 
                 @click="startScanning" 
-                class="bg-yellow-400 px-10 py-3 font-bold rounded-lg hover:bg-yellow-500 hover:px-14 duration-200 transition-all  disabled:opacity-50"
+                class="bg-yellow-400 px-10 py-3 font-bold rounded-lg hover:bg-yellow-500 hover:px-14 duration-300  transition-all disabled:opacity-50"
                 :disabled="!hasCamera || !isComponentMounted"
             >
                 Start Scanning
@@ -263,7 +256,7 @@ onUnmounted(() => {
                     <div v-if="voterData" class="text-left mt-4 space-y-2">
                         <p class="text-gray-700">
                             <span class="font-semibold">Name:</span> 
-                            {{ voterData.first_name }} {{ voterData.middle_name }} {{ voterData.last_name }}
+                            {{ voterData.last_name }},  {{ voterData.first_name }}, {{ voterData.middle_name }} 
                         </p>
                         <p class="text-gray-700">
                             <span class="font-semibold">UUID:</span> 
@@ -278,6 +271,7 @@ onUnmounted(() => {
                 
                 <div v-else class="text-center">
                     <div class="text-red-500 text-6xl mb-4">❌</div>
+                    
                     <h3 class="text-xl font-bold text-red-800 mb-2">Verification Failed</h3>
                     <p class="text-gray-700">{{ error }}</p>
                 </div>

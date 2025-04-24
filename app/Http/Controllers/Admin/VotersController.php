@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Models\Setting;
 use App\Models\VotersModel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,9 +21,10 @@ class VotersController extends Controller
     public function index()
     {
         $voters = VotersModel::paginate(10);
-        
+        $categories = Category::all();
         return Inertia::render('Admin/Voters/VotersList', [
-            'voters' => $voters
+            'voters' => $voters,
+            'categories' => $categories
         ]);
     }
 
@@ -51,6 +53,7 @@ class VotersController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'middle_name' => $validated['middle_name'],
+            'status' => $validated['status'],
             'uuid' => (string) \Illuminate\Support\Str::uuid(),
         ]);
 
@@ -97,6 +100,7 @@ class VotersController extends Controller
     
     public function import(Request $request)
     {
+
         Log::info('📥 Voter import started');
     
         $request->validate([
@@ -138,11 +142,16 @@ class VotersController extends Controller
                 $mapped = array_combine($headers, $row);
                 Log::info("✅ Processing row $index", $mapped);
     
+                // Convert status to integer and ensure it's either 0 or 1
+                $status = isset($mapped['status']) ? (int) $mapped['status'] : 0;
+                $status = in_array($status, [0, 1]) ? $status : 0;
+    
                 VotersModel::create([
                     'first_name' => trim($mapped['first_name'] ?? ''),
                     'last_name' => trim($mapped['last_name'] ?? ''),
                     'middle_name' => trim($mapped['middle_name'] ?? ''),
                     'prec_no' => trim($mapped['PREC. NO'] ?? $mapped['prec_no'] ?? 0),
+                    'status' => $status,
                     'uuid' => (string) Str::uuid(),
                     'category_id' => $request->category_id,
                 ]);
@@ -155,8 +164,36 @@ class VotersController extends Controller
             return back()->withErrors(['file' => 'An error occurred during import. Check logs.']);
         }
     }
-    
+
+
+    public function featureStatus(Request $request) {
+        try {
+            $setting = Setting::first();
+            if (!$setting) {
+                $setting = new Setting();
+                $setting->status = 0;
+                $setting->save();
+            }
+            
+            if ($request->isMethod('post')) {
+                // Toggle the status for POST requests
+                $setting->status = $setting->status ? 0 : 1;
+                $setting->save();
+            }
+            
+            return response()->json([
+                'success' => true,
+                'message' => $setting->status ? 'Scan Once feature activated' : 'Scan Once feature deactivated',
+                'status' => $setting->status
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update status: ' . $e->getMessage(),
+                'status' => 0
+            ], 500);
+        }
+    }
     
 
-   
 }

@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\VotersController;
 use App\Http\Controllers\PageController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Admin\SettingsController;
+
 use Inertia\Inertia;
 
 Route::get('/', function () {
@@ -20,9 +22,9 @@ Route::get('/cards', [PageController::class, 'viewcards'])->name('cards');
 
 
 
-Route::get('/votersList', function () {
-    return Inertia::render('Admin/Voters/VotersList');
-})->middleware(['auth', 'verified'])->name('votersList');
+Route::get('/dashboard', function () {
+    return Inertia::render('Dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -31,7 +33,12 @@ Route::middleware('auth')->group(function () {
 
     Route::resource('voters', VotersController::class)->names('voters');
     Route::post('/voters/import', [VotersController::class, 'import'])->name('voters.import');
+    Route::post('/voters/{uuid}/update-status', [VotersController::class, 'updateStatus'])->name('voters.update-status');
+    Route::post('/voters/feature-status', [VotersController::class, 'featureStatus'])->name('voters.feature-status');
 
+
+Route::get('/settings/scan-once', [SettingsController::class, 'getStatus']);
+Route::post('/settings/scan-once', [SettingsController::class, 'toggleStatus']);
 
 
 
